@@ -574,14 +574,17 @@ export default function App() {
 
   useEffect(()=>{
     return onAuthStateChanged(auth, async fbUser=>{
-      if(fbUser){
-        const d=await getDoc(doc(db,"employees",fbUser.uid));
-        if(d.exists()){ setUserData({uid:fbUser.uid,...d.data()}); setUser(fbUser); }
-      } else { setUser(null); setUserData(null); }
-      setLoading(false);
-    });
+     if(fbUser){
+  const d=await getDoc(doc(db,"employees",fbUser.uid));
+  if(d.exists()){ setUserData({uid:fbUser.uid,...d.data()}); setUser(fbUser); }
+} else { 
+  setUser(null); 
+  setUserData(null); 
+}
+setLoading(false);
   },[]);
-
+  
+console.log("loading state:", loading, "user:", user);
   if(loading) return (
     <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}>
       <div style={{textAlign:"center"}}>
