@@ -323,7 +323,7 @@ const AdminDash = ({user}) => {
   const [employees,setEmployees]=useState([]);
   const [attendance,setAttendance]=useState([]);
   const [filterDate,setFilterDate]=useState(todayStr());
-  const [win,setWin]=useState({start:"09:00",end:"09:30",lateAfter:"09:15"});
+  const [win,setWin]=useState({start:"08:00",end:"08:30",lateAfter:"08:35"});
   const [newEmp,setNewEmp]=useState({name:"",email:"",password:""});
   const [loading,setLoading]=useState(false);
   const [saving,setSaving]=useState(false);
