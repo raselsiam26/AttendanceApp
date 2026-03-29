@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import {
   getAuth, signInWithEmailAndPassword, signOut,
@@ -20,9 +20,8 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app, "default");
+const db   = getFirestore(app);
 
-// ─── UTILS ─────────────────────────────────────────────────────
 const todayStr = () => new Date().toISOString().split("T")[0];
 const formatTime = (d) => d.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const formatDate = (s) => new Date(s+"T00:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
@@ -37,26 +36,15 @@ function getWindowStatus(w, now=new Date()){
   return "closed";
 }
 
-// ─── GLOBAL STYLES ─────────────────────────────────────────────
 const GS = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --bg:#0a0f1e;--surf:#111827;--surf2:#1a2235;--surf3:#243050;
-      --brd:rgba(255,255,255,0.08);--brd2:rgba(255,255,255,0.14);
-      --txt:#f0f4ff;--txt2:#94a3b8;--txt3:#64748b;
-      --acc:#4f8ef7;--acc2:#6366f1;
-      --grn:#22c55e;--ylw:#f59e0b;--red:#ef4444;
-      --font:'DM Sans',sans-serif;--mono:'Space Mono',monospace;
-      --rad:14px;--radsm:8px;
-    }
+    :root{--bg:#0a0f1e;--surf:#111827;--surf2:#1a2235;--surf3:#243050;--brd:rgba(255,255,255,0.08);--brd2:rgba(255,255,255,0.14);--txt:#f0f4ff;--txt2:#94a3b8;--txt3:#64748b;--acc:#4f8ef7;--acc2:#6366f1;--grn:#22c55e;--ylw:#f59e0b;--red:#ef4444;--font:'DM Sans',sans-serif;--mono:'Space Mono',monospace;--rad:14px;--radsm:8px;}
     html,body,#root{height:100%}
     body{font-family:var(--font);background:var(--bg);color:var(--txt);line-height:1.6;-webkit-font-smoothing:antialiased}
     input,button,select{font-family:var(--font)}
-    ::-webkit-scrollbar{width:6px}
-    ::-webkit-scrollbar-track{background:var(--surf)}
-    ::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:3px}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--surf)}::-webkit-scrollbar-thumb{background:var(--surf3);border-radius:3px}
     @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{to{transform:rotate(360deg)}}
     .fade-in{animation:fadeIn .4s ease both}
@@ -64,34 +52,28 @@ const GS = () => (
     .grid-bg{background-image:linear-gradient(rgba(79,142,247,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(79,142,247,.04) 1px,transparent 1px);background-size:48px 48px}
     .card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--rad);padding:24px}
     .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
-    .bg{background:rgba(34,197,94,.15);color:var(--grn)}
-    .by{background:rgba(245,158,11,.15);color:var(--ylw)}
-    .br{background:rgba(239,68,68,.15);color:var(--red)}
-    .bb{background:rgba(79,142,247,.15);color:var(--acc)}
+    .bg{background:rgba(34,197,94,.15);color:var(--grn)}.by{background:rgba(245,158,11,.15);color:var(--ylw)}.br{background:rgba(239,68,68,.15);color:var(--red)}.bb{background:rgba(79,142,247,.15);color:var(--acc)}
     table{width:100%;border-collapse:collapse}
     th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);padding:10px 16px;border-bottom:1px solid var(--brd)}
     td{padding:13px 16px;font-size:14px;border-bottom:1px solid var(--brd);color:var(--txt2)}
-    tr:last-child td{border-bottom:none}
-    tr:hover td{background:rgba(255,255,255,.02)}
+    tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.02)}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:var(--radsm);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border:none;outline:none;white-space:nowrap}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .btn-p{background:var(--acc);color:white}
-    .btn-p:hover:not(:disabled){background:#3d7de8;transform:translateY(-1px)}
-    .btn-g{background:transparent;color:var(--txt2);border:1px solid var(--brd2)}
-    .btn-g:hover:not(:disabled){background:var(--surf2);color:var(--txt)}
-    .input-group{display:flex;flex-direction:column;gap:6px}
-    .input-group label{font-size:13px;font-weight:500;color:var(--txt2)}
+    .btn-p{background:linear-gradient(135deg,var(--acc),var(--acc2));color:white}.btn-p:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+    .btn-g{background:transparent;color:var(--txt2);border:1px solid var(--brd2)}.btn-g:hover:not(:disabled){background:var(--surf2);color:var(--txt)}
+    .input-group{display:flex;flex-direction:column;gap:6px}.input-group label{font-size:13px;font-weight:500;color:var(--txt2)}
     .input{background:var(--surf2);border:1px solid var(--brd2);border-radius:var(--radsm);padding:11px 14px;color:var(--txt);font-size:14px;transition:border-color .2s,box-shadow .2s;width:100%;outline:none}
-    .input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(79,142,247,.15)}
-    .input::placeholder{color:var(--txt3)}
+    .input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(79,142,247,.15)}.input::placeholder{color:var(--txt3)}
     #toast-wrap{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
     .toast{display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:var(--radsm);font-size:14px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.4);animation:fadeIn .3s ease both;max-width:360px;color:white}
     .t-s{background:#16a34a}.t-e{background:#dc2626}.t-i{background:var(--acc)}
+    .cam-wrap{position:relative;width:100%;max-width:340px;margin:0 auto;border-radius:16px;overflow:hidden;border:2px solid var(--acc)}
+    .cam-wrap video{width:100%;display:block;transform:scaleX(-1)}
+    .selfie-prev img{width:100%;border-radius:16px;border:2px solid var(--grn);transform:scaleX(-1)}
     @media(max-width:768px){.hide-mobile{display:none!important}.card{padding:16px}}
   `}</style>
 );
 
-// ─── TOAST ─────────────────────────────────────────────────────
 let _addToast = null;
 const toast = {
   success: m => _addToast?.({id:Date.now(),type:"s",msg:m}),
@@ -104,27 +86,15 @@ const Toasts = () => {
     _addToast = t => { setList(p=>[...p,t]); setTimeout(()=>setList(p=>p.filter(x=>x.id!==t.id)),3500); };
     return ()=>{ _addToast=null; };
   },[]);
-  return (
-    <div id="toast-wrap">
-      {list.map(t=>(
-        <div key={t.id} className={`toast t-${t.type}`}>
-          {t.type==="s"?"✓":t.type==="e"?"✗":"ℹ"} {t.msg}
-        </div>
-      ))}
-    </div>
-  );
+  return <div id="toast-wrap">{list.map(t=><div key={t.id} className={`toast t-${t.type}`}>{t.type==="s"?"✓":t.type==="e"?"✗":"ℹ"} {t.msg}</div>)}</div>;
 };
 
-// ─── NAV ───────────────────────────────────────────────────────
 const Nav = ({user, now}) => (
   <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 24px",borderBottom:"1px solid var(--brd)",background:"rgba(10,15,30,0.9)",backdropFilter:"blur(12px)",position:"sticky",top:0,zIndex:100}}>
     <div style={{display:"flex",alignItems:"center",gap:12}}>
       <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,var(--acc),var(--acc2))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>📋</div>
       <div>
-        <div style={{fontWeight:700,fontSize:16}}>
-          AttendTrack
-          {user.role==="admin" && <span style={{fontSize:11,background:"rgba(99,102,241,.2)",color:"#818cf8",padding:"2px 7px",borderRadius:5,marginLeft:8,fontWeight:700}}>ADMIN</span>}
-        </div>
+        <div style={{fontWeight:700,fontSize:16}}>AttendTrack{user.role==="admin"&&<span style={{fontSize:11,background:"rgba(99,102,241,.2)",color:"#818cf8",padding:"2px 7px",borderRadius:5,marginLeft:8,fontWeight:700}}>ADMIN</span>}</div>
         <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt3)"}}>{formatTime(now)}</div>
       </div>
     </div>
@@ -135,24 +105,18 @@ const Nav = ({user, now}) => (
   </nav>
 );
 
-// ─── LOGIN ─────────────────────────────────────────────────────
 const Login = () => {
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
   const [loading,setLoading]=useState(false);
   const [now,setNow]=useState(new Date());
   useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(t); },[]);
-
   const handle = async e => {
     e.preventDefault(); setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth,email,pass);
-      toast.success("স্বাগতম!");
-    } catch(err) {
-      toast.error("Email বা Password ভুল");
-    } finally { setLoading(false); }
+    try { await signInWithEmailAndPassword(auth,email,pass); toast.success("স্বাগতম!"); }
+    catch { toast.error("Email বা Password ভুল"); }
+    finally { setLoading(false); }
   };
-
   return (
     <div className="grid-bg" style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
       <div className="fade-in" style={{width:"100%",maxWidth:420}}>
@@ -165,17 +129,9 @@ const Login = () => {
         <div className="card" style={{boxShadow:"0 25px 60px rgba(0,0,0,.4)"}}>
           <h2 style={{fontSize:18,fontWeight:600,marginBottom:24}}>Sign In</h2>
           <form onSubmit={handle} style={{display:"flex",flexDirection:"column",gap:16}}>
-            <div className="input-group">
-              <label>Email</label>
-              <input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com" required/>
-            </div>
-            <div className="input-group">
-              <label>Password</label>
-              <input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" required/>
-            </div>
-            <button className="btn btn-p" type="submit" disabled={loading} style={{padding:13,fontSize:15,borderRadius:10,background:"linear-gradient(135deg,var(--acc),var(--acc2))"}}>
-              {loading ? <span className="spinner"/> : "Sign In →"}
-            </button>
+            <div className="input-group"><label>Email</label><input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com" required/></div>
+            <div className="input-group"><label>Password</label><input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" required/></div>
+            <button className="btn btn-p" type="submit" disabled={loading} style={{padding:13,fontSize:15,borderRadius:10}}>{loading?<span className="spinner"/>:"Sign In →"}</button>
           </form>
         </div>
       </div>
@@ -183,13 +139,88 @@ const Login = () => {
   );
 };
 
-// ─── EMPLOYEE DASHBOARD ────────────────────────────────────────
+const SelfieCamera = ({ onCapture, onCancel }) => {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [stream, setStream] = useState(null);
+  const [captured, setCaptured] = useState(null);
+  const [camError, setCamError] = useState(false);
+
+  useEffect(() => {
+    startCamera();
+    return () => { if(stream) stream.getTracks().forEach(t=>t.stop()); };
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"user" } });
+      setStream(s);
+      if(videoRef.current) videoRef.current.srcObject = s;
+    } catch { setCamError(true); toast.error("Camera access দেওয়া হয়নি!"); }
+  };
+
+  const stopStream = (s) => { if(s) s.getTracks().forEach(t=>t.stop()); };
+
+  const takeSelfie = () => {
+    const video = videoRef.current, canvas = canvasRef.current;
+    if(!video||!canvas) return;
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.translate(canvas.width,0); ctx.scale(-1,1);
+    ctx.drawImage(video,0,0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.4);
+    setCaptured(dataUrl);
+    stopStream(stream);
+  };
+
+  const retake = () => { setCaptured(null); startCamera(); };
+
+  if(camError) return (
+    <div style={{textAlign:"center",padding:24}}>
+      <div style={{fontSize:40,marginBottom:12}}>📷</div>
+      <p style={{color:"var(--red)",marginBottom:16}}>Camera access পাওয়া যায়নি!</p>
+      <p style={{color:"var(--txt2)",fontSize:13,marginBottom:20}}>Browser এ camera permission দিন অথবা HTTPS connection ব্যবহার করুন।</p>
+      <button className="btn btn-g" onClick={onCancel}>বাতিল</button>
+    </div>
+  );
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
+      {!captured ? (
+        <>
+          <div className="cam-wrap">
+            <video ref={videoRef} autoPlay playsInline muted/>
+            <canvas ref={canvasRef} style={{display:"none"}}/>
+          </div>
+          <p style={{color:"var(--txt2)",fontSize:13,textAlign:"center"}}>📸 Camera তে নিজের মুখ রাখুন</p>
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn btn-g" onClick={onCancel}>বাতিল</button>
+            <button className="btn btn-p" onClick={takeSelfie} style={{padding:"12px 32px",fontSize:15}}>📸 Selfie তুলুন</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="selfie-prev" style={{maxWidth:340,width:"100%",margin:"0 auto"}}>
+            <img src={captured} alt="selfie"/>
+          </div>
+          <p style={{color:"var(--grn)",fontSize:13,textAlign:"center"}}>✓ Selfie তোলা হয়েছে!</p>
+          <div style={{display:"flex",gap:10}}>
+            <button className="btn btn-g" onClick={retake}>🔄 আবার তুলুন</button>
+            <button className="btn btn-p" onClick={()=>onCapture(captured)} style={{padding:"12px 32px",fontSize:15}}>✓ Confirm</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const EmpDash = ({user}) => {
   const [now,setNow]=useState(new Date());
   const [win,setWin]=useState(null);
   const [rec,setRec]=useState(null);
   const [hist,setHist]=useState([]);
   const [marking,setMarking]=useState(false);
+  const [showCam,setShowCam]=useState(false);
 
   useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(t); },[]);
 
@@ -208,28 +239,32 @@ const EmpDash = ({user}) => {
 
   useEffect(()=>{ load(); },[load]);
 
-  const mark = async()=>{
+  const ws = win ? getWindowStatus(win,now) : null;
+
+  const handleMarkBtn = () => {
     if(!win) return toast.error("Time window set নেই");
-    setMarking(true);
+    if(ws==="early") return toast.info("এখনো attendance window খোলেনি");
+    if(ws==="closed") return toast.error("Attendance window বন্ধ");
+    setShowCam(true);
+  };
+
+  const handleCapture = async (selfieB64) => {
+    setShowCam(false); setMarking(true);
     try {
-      const ws=getWindowStatus(win,now);
-      if(ws==="early") return toast.info("এখনো attendance window খোলেনি");
-      if(ws==="closed") return toast.error("Attendance window বন্ধ");
       const today=todayStr();
       const status=ws==="on_time"?"present":"late";
       await setDoc(doc(db,"attendance",`${user.uid}_${today}`),{
         uid:user.uid, name:user.name, email:user.email,
         date:today, time:formatTime(now), markedAt:now.toISOString(),
-        status, timestamp:serverTimestamp(),
+        status, selfie:selfieB64, timestamp:serverTimestamp(),
       });
-      setRec({date:today,time:formatTime(now),status});
+      setRec({date:today,time:formatTime(now),status,selfie:selfieB64});
       toast.success(status==="present"?"✓ উপস্থিত — সময়মতো!":"⚠ উপস্থিত — দেরিতে");
       load();
-    } catch(e){ toast.error("Mark করা যায়নি"); }
+    } catch(e){ toast.error("Mark করা যায়নি: "+e.message); }
     finally { setMarking(false); }
   };
 
-  const ws = win ? getWindowStatus(win,now) : null;
   const presentN=hist.filter(r=>r.status==="present").length;
   const lateN=hist.filter(r=>r.status==="late").length;
   const wsLabels={early:"bb",on_time:"bg",late:"by",closed:"br"};
@@ -241,9 +276,7 @@ const EmpDash = ({user}) => {
       <main style={{flex:1,padding:"28px 20px"}}>
         <div className="fade-in" style={{maxWidth:860,margin:"0 auto",display:"grid",gap:20}}>
           <div>
-            <h1 style={{fontSize:24,fontWeight:700,letterSpacing:"-.02em"}}>
-              {now.getHours()<12?"সুপ্রভাত":now.getHours()<17?"শুভ অপরাহ্ন":"শুভ সন্ধ্যা"}, {user.name.split(" ")[0]} 👋
-            </h1>
+            <h1 style={{fontSize:24,fontWeight:700}}>{now.getHours()<12?"সুপ্রভাত":now.getHours()<17?"শুভ অপরাহ্ন":"শুভ সন্ধ্যা"}, {user.name.split(" ")[0]} 👋</h1>
             <p style={{color:"var(--txt2)",marginTop:4,fontSize:13}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
           </div>
 
@@ -258,30 +291,28 @@ const EmpDash = ({user}) => {
             </div>
           )}
 
-          <div className="card" style={{textAlign:"center",padding:"44px 24px"}}>
-            {rec ? (
-              <>
+          <div className="card" style={{padding:"36px 24px"}}>
+            {showCam ? (
+              <SelfieCamera onCapture={handleCapture} onCancel={()=>setShowCam(false)}/>
+            ) : rec ? (
+              <div style={{textAlign:"center"}}>
                 <div style={{width:72,height:72,borderRadius:"50%",background:rec.status==="present"?"rgba(34,197,94,.14)":"rgba(245,158,11,.14)",border:`2px solid ${rec.status==="present"?"var(--grn)":"var(--ylw)"}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:28}}>{rec.status==="present"?"✓":"⚠"}</div>
                 <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Attendance Recorded</h2>
                 <p style={{color:"var(--txt2)",marginBottom:14,fontSize:13}}>Marked at <strong style={{color:"var(--txt)"}}>{rec.time}</strong></p>
                 <span className={`badge ${rec.status==="present"?"bg":"by"}`} style={{fontSize:13,padding:"5px 16px"}}>{rec.status==="present"?"✓ On Time":"⚠ Late"}</span>
-              </>
+                {rec.selfie && <div style={{marginTop:20}}><div style={{fontSize:12,color:"var(--txt3)",marginBottom:8}}>আজকের Selfie</div><img src={rec.selfie} alt="selfie" style={{width:110,height:110,borderRadius:"50%",objectFit:"cover",border:"3px solid var(--grn)",margin:"0 auto",display:"block"}}/></div>}
+              </div>
             ) : (
-              <>
-                <div style={{width:72,height:72,borderRadius:"50%",background:"rgba(79,142,247,.1)",border:"2px solid rgba(79,142,247,.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:28}}>🖐</div>
-                <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Mark Your Attendance</h2>
+              <div style={{textAlign:"center"}}>
+                <div style={{width:72,height:72,borderRadius:"50%",background:"rgba(79,142,247,.1)",border:"2px solid rgba(79,142,247,.25)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:28}}>📸</div>
+                <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>Selfie দিয়ে Attendance দিন</h2>
                 <p style={{color:"var(--txt2)",marginBottom:22,fontSize:13,maxWidth:320,margin:"0 auto 22px"}}>
-                  {ws==="early"?"Window এখনো খোলেনি":ws==="on_time"?"Window Open! এখনই mark করুন":ws==="late"?"দেরি হয়ে গেছে — Late হিসেবে record হবে":"Window বন্ধ হয়ে গেছে"}
+                  {ws==="early"?"Window এখনো খোলেনি":ws==="on_time"?"Window Open! Selfie তুলে attendance দিন":ws==="late"?"দেরি হয়েছে — Late হিসেবে record হবে":"Window বন্ধ হয়ে গেছে"}
                 </p>
-                <button
-                  className="btn"
-                  onClick={mark}
-                  disabled={marking||!ws||ws==="early"||ws==="closed"}
-                  style={{padding:"13px 40px",fontSize:15,borderRadius:12,border:"none",color:"white",cursor:ws==="on_time"||ws==="late"?"pointer":"not-allowed",background:ws==="on_time"?"linear-gradient(135deg,var(--acc),var(--acc2))":ws==="late"?"linear-gradient(135deg,var(--ylw),#d97706)":"var(--surf3)"}}
-                >
-                  {marking?<span className="spinner"/>:ws==="on_time"?"✓ Mark Present":ws==="late"?"⚠ Mark Late":"Unavailable"}
+                <button className="btn" onClick={handleMarkBtn} disabled={marking||!ws||ws==="early"||ws==="closed"} style={{padding:"13px 40px",fontSize:15,borderRadius:12,border:"none",color:"white",background:ws==="on_time"?"linear-gradient(135deg,var(--acc),var(--acc2))":ws==="late"?"linear-gradient(135deg,var(--ylw),#d97706)":"var(--surf3)"}}>
+                  {marking?<span className="spinner"/>:"📸 Selfie দিয়ে Mark করুন"}
                 </button>
-              </>
+              </div>
             )}
           </div>
 
@@ -298,12 +329,13 @@ const EmpDash = ({user}) => {
             <div className="card" style={{padding:0,overflow:"hidden"}}>
               <div style={{padding:"14px 20px",borderBottom:"1px solid var(--brd)",fontWeight:600}}>Attendance History</div>
               <table>
-                <thead><tr><th>Date</th><th>Time</th><th>Status</th></tr></thead>
+                <thead><tr><th>Date</th><th>Time</th><th>Selfie</th><th>Status</th></tr></thead>
                 <tbody>
                   {hist.map((r,i)=>(
                     <tr key={i}>
                       <td style={{color:"var(--txt)",fontWeight:500}}>{formatDate(r.date)}</td>
                       <td style={{fontFamily:"var(--mono)",fontSize:13}}>{r.time}</td>
+                      <td>{r.selfie?<img src={r.selfie} alt="s" style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",border:"2px solid var(--brd2)"}}/>:<span style={{color:"var(--txt3)",fontSize:12}}>—</span>}</td>
                       <td><span className={`badge ${r.status==="present"?"bg":"by"}`}>{r.status==="present"?"On Time":"Late"}</span></td>
                     </tr>
                   ))}
@@ -317,18 +349,18 @@ const EmpDash = ({user}) => {
   );
 };
 
-// ─── ADMIN DASHBOARD ───────────────────────────────────────────
 const AdminDash = ({user}) => {
   const [tab,setTab]=useState("overview");
   const [employees,setEmployees]=useState([]);
   const [attendance,setAttendance]=useState([]);
   const [filterDate,setFilterDate]=useState(todayStr());
-  const [win,setWin]=useState({start:"08:00",end:"08:30",lateAfter:"08:35"});
+  const [win,setWin]=useState({start:"09:00",end:"09:30",lateAfter:"09:15"});
   const [newEmp,setNewEmp]=useState({name:"",email:"",password:""});
   const [loading,setLoading]=useState(false);
   const [saving,setSaving]=useState(false);
   const [adding,setAdding]=useState(false);
   const [now,setNow]=useState(new Date());
+  const [selfiePop,setSelfiePop]=useState(null);
 
   useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(t); },[]);
 
@@ -370,10 +402,7 @@ const AdminDash = ({user}) => {
 
   const exportCSV = ()=>{
     let csv="Name,Email,Date,Time,Status\n";
-    employees.forEach(emp=>{
-      const r=attendance.find(a=>a.uid===emp.id);
-      csv+=`${emp.name},${emp.email},${filterDate},${r?r.time:"-"},${r?r.status:"absent"}\n`;
-    });
+    employees.forEach(emp=>{ const r=attendance.find(a=>a.uid===emp.id); csv+=`${emp.name},${emp.email},${filterDate},${r?r.time:"-"},${r?r.status:"absent"}\n`; });
     const a=document.createElement("a");
     a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
     a.download=`attendance_${filterDate}.csv`; a.click();
@@ -384,117 +413,75 @@ const AdminDash = ({user}) => {
   const lateN=attendance.filter(r=>r.status==="late").length;
   const absentN=Math.max(0,employees.length-attendance.length);
   const rate=employees.length?Math.round((attendance.length/employees.length)*100):0;
-
   const TABS=[{id:"overview",l:"📊 Overview"},{id:"attendance",l:"📅 Attendance"},{id:"employees",l:"👥 Employees"},{id:"settings",l:"⚙️ Settings"}];
+
+  const SelfieThumb = ({r, emp}) => r?.selfie ? (
+    <img onClick={()=>setSelfiePop({...r,name:emp.name})} src={r.selfie} alt="s" style={{width:40,height:40,borderRadius:"50%",objectFit:"cover",border:"2px solid var(--grn)",cursor:"pointer"}} title="Click to view"/>
+  ) : <span style={{color:"var(--txt3)",fontSize:12}}>—</span>;
 
   return (
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <Nav user={user} now={now}/>
+
+      {selfiePop && (
+        <div onClick={()=>setSelfiePop(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,cursor:"pointer"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"var(--surf)",borderRadius:16,padding:24,maxWidth:400,width:"90%"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <span style={{fontWeight:600}}>{selfiePop.name} এর Selfie</span>
+              <button onClick={()=>setSelfiePop(null)} className="btn btn-g" style={{padding:"4px 10px"}}>✕</button>
+            </div>
+            <img src={selfiePop.selfie} alt="selfie" style={{width:"100%",borderRadius:12,border:"2px solid var(--brd2)"}}/>
+            <div style={{marginTop:12,fontSize:13,color:"var(--txt2)",textAlign:"center"}}>{selfiePop.time} · <span className={`badge ${selfiePop.status==="present"?"bg":"by"}`}>{selfiePop.status==="present"?"On Time":"Late"}</span></div>
+          </div>
+        </div>
+      )}
+
       <div style={{display:"flex",flex:1}}>
-        {/* Sidebar */}
         <aside className="hide-mobile" style={{width:210,borderRight:"1px solid var(--brd)",padding:"20px 12px",background:"var(--surf)",flexShrink:0}}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"var(--font)",fontSize:13,fontWeight:500,textAlign:"left",width:"100%",marginBottom:3,transition:"all .15s",background:tab===t.id?"rgba(79,142,247,.12)":"transparent",color:tab===t.id?"var(--acc)":"var(--txt2)"}}>
-              {t.l}
-            </button>
-          ))}
+          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"var(--font)",fontSize:13,fontWeight:500,textAlign:"left",width:"100%",marginBottom:3,transition:"all .15s",background:tab===t.id?"rgba(79,142,247,.12)":"transparent",color:tab===t.id?"var(--acc)":"var(--txt2)"}}>{t.l}</button>)}
         </aside>
 
         <main style={{flex:1,padding:"24px 20px",overflowY:"auto"}} className="grid-bg">
-          {/* Mobile tabs */}
           <div style={{display:"flex",gap:4,marginBottom:20,overflowX:"auto",paddingBottom:4}}>
-            {TABS.map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 14px",borderRadius:8,border:"1px solid var(--brd)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)",flexShrink:0,background:tab===t.id?"var(--acc)":"var(--surf)",color:tab===t.id?"white":"var(--txt2)"}}>
-                {t.l}
-              </button>
-            ))}
+            {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 14px",borderRadius:8,border:"1px solid var(--brd)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)",flexShrink:0,background:tab===t.id?"var(--acc)":"var(--surf)",color:tab===t.id?"white":"var(--txt2)"}}>{t.l}</button>)}
           </div>
 
           <div className="fade-in" style={{maxWidth:900,margin:"0 auto"}}>
 
-            {/* OVERVIEW */}
             {tab==="overview" && (
               <div style={{display:"grid",gap:20}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-                  <div>
-                    <h1 style={{fontSize:22,fontWeight:700}}>Dashboard</h1>
-                    <p style={{color:"var(--txt2)",fontSize:13,marginTop:2}}>{formatDate(filterDate)}</p>
-                  </div>
+                  <div><h1 style={{fontSize:22,fontWeight:700}}>Dashboard</h1><p style={{color:"var(--txt2)",fontSize:13,marginTop:2}}>{formatDate(filterDate)}</p></div>
                   <div style={{display:"flex",gap:8}}>
                     <input className="input" type="date" value={filterDate} onChange={e=>setFilterDate(e.target.value)} style={{width:"auto"}}/>
                     <button className="btn btn-g" onClick={load}>{loading?<span className="spinner"/>:"↺"}</button>
                     <button className="btn btn-g" onClick={exportCSV}>↓ CSV</button>
                   </div>
                 </div>
-
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14}}>
                   {[{l:"Total",v:employees.length,c:"var(--acc)",bg:"rgba(79,142,247,.08)"},{l:"Present",v:presentN,c:"var(--grn)",bg:"rgba(34,197,94,.08)"},{l:"Late",v:lateN,c:"var(--ylw)",bg:"rgba(245,158,11,.08)"},{l:"Absent",v:absentN,c:"var(--red)",bg:"rgba(239,68,68,.08)"}].map(s=>(
-                    <div key={s.l} className="card" style={{background:s.bg,borderColor:"transparent"}}>
-                      <div style={{fontSize:36,fontWeight:700,color:s.c,fontFamily:"var(--mono)",lineHeight:1}}>{s.v}</div>
-                      <div style={{fontSize:13,color:"var(--txt2)",marginTop:6}}>{s.l}</div>
-                    </div>
+                    <div key={s.l} className="card" style={{background:s.bg,borderColor:"transparent"}}><div style={{fontSize:36,fontWeight:700,color:s.c,fontFamily:"var(--mono)",lineHeight:1}}>{s.v}</div><div style={{fontSize:13,color:"var(--txt2)",marginTop:6}}>{s.l}</div></div>
                   ))}
                 </div>
-
                 {employees.length>0 && (
                   <div className="card">
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-                      <span style={{fontWeight:600}}>Attendance Rate</span>
-                      <span style={{fontFamily:"var(--mono)",color:"var(--acc)",fontWeight:700}}>{rate}%</span>
-                    </div>
-                    <div style={{height:8,background:"var(--surf2)",borderRadius:4,overflow:"hidden"}}>
-                      <div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,var(--grn),var(--acc))",width:`${rate}%`,transition:"width .5s ease"}}/>
-                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontWeight:600}}>Attendance Rate</span><span style={{fontFamily:"var(--mono)",color:"var(--acc)",fontWeight:700}}>{rate}%</span></div>
+                    <div style={{height:8,background:"var(--surf2)",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,var(--grn),var(--acc))",width:`${rate}%`,transition:"width .5s ease"}}/></div>
                   </div>
                 )}
-
                 <div className="card" style={{padding:0,overflow:"hidden"}}>
-                  <div style={{padding:"14px 20px",borderBottom:"1px solid var(--brd)",fontWeight:600}}>Today's Status</div>
+                  <div style={{padding:"14px 20px",borderBottom:"1px solid var(--brd)",fontWeight:600}}>আজকের Status</div>
                   <table>
-                    <thead><tr><th>Employee</th><th>Time</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Employee</th><th>Selfie</th><th>Time</th><th>Status</th></tr></thead>
                     <tbody>
-                      {employees.map(emp=>{
-                        const r=attendance.find(a=>a.uid===emp.id);
-                        return(
-                          <tr key={emp.id}>
-                            <td><div style={{fontWeight:600,color:"var(--txt)"}}>{emp.name}</div><div style={{fontSize:12,color:"var(--txt3)"}}>{emp.email}</div></td>
-                            <td style={{fontFamily:"var(--mono)",fontSize:13}}>{r?r.time:"—"}</td>
-                            <td>{r?<span className={`badge ${r.status==="present"?"bg":"by"}`}>{r.status==="present"?"✓ On Time":"⚠ Late"}</span>:<span className="badge br">✗ Absent</span>}</td>
-                          </tr>
-                        );
-                      })}
-                      {employees.length===0 && <tr><td colSpan={3} style={{textAlign:"center",color:"var(--txt3)",padding:32}}>কোনো employee নেই</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* ATTENDANCE */}
-            {tab==="attendance" && (
-              <div style={{display:"grid",gap:20}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-                  <h2 style={{fontSize:20,fontWeight:700}}>Attendance Records</h2>
-                  <div style={{display:"flex",gap:8}}>
-                    <input className="input" type="date" value={filterDate} onChange={e=>setFilterDate(e.target.value)} style={{width:"auto"}}/>
-                    <button className="btn btn-g" onClick={exportCSV}>↓ CSV</button>
-                  </div>
-                </div>
-                <div className="card" style={{padding:0,overflow:"hidden"}}>
-                  <table>
-                    <thead><tr><th>Employee</th><th>Email</th><th>Time</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {employees.map(emp=>{
-                        const r=attendance.find(a=>a.uid===emp.id);
-                        return(
-                          <tr key={emp.id}>
-                            <td style={{fontWeight:600,color:"var(--txt)"}}>{emp.name}</td>
-                            <td style={{fontSize:12}}>{emp.email}</td>
-                            <td style={{fontFamily:"var(--mono)",fontSize:13}}>{r?r.time:"—"}</td>
-                            <td>{r?<span className={`badge ${r.status==="present"?"bg":"by"}`}>{r.status==="present"?"On Time":"Late"}</span>:<span className="badge br">Absent</span>}</td>
-                          </tr>
-                        );
-                      })}
+                      {employees.map(emp=>{ const r=attendance.find(a=>a.uid===emp.id); return(
+                        <tr key={emp.id}>
+                          <td><div style={{fontWeight:600,color:"var(--txt)"}}>{emp.name}</div><div style={{fontSize:12,color:"var(--txt3)"}}>{emp.email}</div></td>
+                          <td><SelfieThumb r={r} emp={emp}/></td>
+                          <td style={{fontFamily:"var(--mono)",fontSize:13}}>{r?r.time:"—"}</td>
+                          <td>{r?<span className={`badge ${r.status==="present"?"bg":"by"}`}>{r.status==="present"?"✓ On Time":"⚠ Late"}</span>:<span className="badge br">✗ Absent</span>}</td>
+                        </tr>
+                      );})}
                       {employees.length===0 && <tr><td colSpan={4} style={{textAlign:"center",color:"var(--txt3)",padding:32}}>কোনো employee নেই</td></tr>}
                     </tbody>
                   </table>
@@ -502,7 +489,30 @@ const AdminDash = ({user}) => {
               </div>
             )}
 
-            {/* EMPLOYEES */}
+            {tab==="attendance" && (
+              <div style={{display:"grid",gap:20}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                  <h2 style={{fontSize:20,fontWeight:700}}>Attendance Records</h2>
+                  <div style={{display:"flex",gap:8}}><input className="input" type="date" value={filterDate} onChange={e=>setFilterDate(e.target.value)} style={{width:"auto"}}/><button className="btn btn-g" onClick={exportCSV}>↓ CSV</button></div>
+                </div>
+                <div className="card" style={{padding:0,overflow:"hidden"}}>
+                  <table>
+                    <thead><tr><th>Employee</th><th>Selfie</th><th>Time</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {employees.map(emp=>{ const r=attendance.find(a=>a.uid===emp.id); return(
+                        <tr key={emp.id}>
+                          <td style={{fontWeight:600,color:"var(--txt)"}}>{emp.name}</td>
+                          <td><SelfieThumb r={r} emp={emp}/></td>
+                          <td style={{fontFamily:"var(--mono)",fontSize:13}}>{r?r.time:"—"}</td>
+                          <td>{r?<span className={`badge ${r.status==="present"?"bg":"by"}`}>{r.status==="present"?"On Time":"Late"}</span>:<span className="badge br">Absent</span>}</td>
+                        </tr>
+                      );})}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {tab==="employees" && (
               <div style={{display:"grid",gap:20}}>
                 <h2 style={{fontSize:20,fontWeight:700}}>Manage Employees</h2>
@@ -520,14 +530,7 @@ const AdminDash = ({user}) => {
                   <table>
                     <thead><tr><th>#</th><th>নাম</th><th>Email</th><th>Role</th></tr></thead>
                     <tbody>
-                      {employees.map((e,i)=>(
-                        <tr key={e.id}>
-                          <td style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt3)"}}>{String(i+1).padStart(2,"0")}</td>
-                          <td style={{fontWeight:600,color:"var(--txt)"}}>{e.name}</td>
-                          <td>{e.email}</td>
-                          <td><span className="badge bb">Employee</span></td>
-                        </tr>
-                      ))}
+                      {employees.map((e,i)=><tr key={e.id}><td style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt3)"}}>{String(i+1).padStart(2,"0")}</td><td style={{fontWeight:600,color:"var(--txt)"}}>{e.name}</td><td>{e.email}</td><td><span className="badge bb">Employee</span></td></tr>)}
                       {employees.length===0 && <tr><td colSpan={4} style={{textAlign:"center",color:"var(--txt3)",padding:32}}>এখনো কেউ নেই</td></tr>}
                     </tbody>
                   </table>
@@ -535,26 +538,18 @@ const AdminDash = ({user}) => {
               </div>
             )}
 
-            {/* SETTINGS */}
             {tab==="settings" && (
               <div style={{display:"grid",gap:20}}>
                 <h2 style={{fontSize:20,fontWeight:700}}>Settings</h2>
                 <div className="card" style={{maxWidth:480}}>
                   <h3 style={{fontWeight:600,marginBottom:4}}>Attendance Time Window</h3>
-                  <p style={{color:"var(--txt3)",fontSize:13,marginBottom:18}}>প্রতিদিন কখন attendance নেওয়া হবে তা set করুন</p>
+                  <p style={{color:"var(--txt3)",fontSize:13,marginBottom:18}}>প্রতিদিন কখন attendance নেওয়া হবে</p>
                   <div style={{display:"grid",gap:14}}>
                     {[{l:"Window শুরু",k:"start"},{l:"Late হবে এর পর",k:"lateAfter"},{l:"Window শেষ",k:"end"}].map(f=>(
-                      <div key={f.k} className="input-group">
-                        <label>{f.l}</label>
-                        <input className="input" type="time" value={win[f.k]} onChange={e=>setWin(p=>({...p,[f.k]:e.target.value}))}/>
-                      </div>
+                      <div key={f.k} className="input-group"><label>{f.l}</label><input className="input" type="time" value={win[f.k]} onChange={e=>setWin(p=>({...p,[f.k]:e.target.value}))}/></div>
                     ))}
-                    <div style={{background:"var(--surf2)",borderRadius:10,padding:"12px 14px",fontSize:13,color:"var(--txt2)"}}>
-                      ℹ️ {win.start}–{win.lateAfter} = <span style={{color:"var(--grn)"}}>On Time</span> · {win.lateAfter}–{win.end} = <span style={{color:"var(--ylw)"}}>Late</span>
-                    </div>
-                    <button className="btn btn-p" onClick={saveWin} disabled={saving} style={{width:"fit-content"}}>
-                      {saving?<span className="spinner"/>:"Save Settings"}
-                    </button>
+                    <div style={{background:"var(--surf2)",borderRadius:10,padding:"12px 14px",fontSize:13,color:"var(--txt2)"}}>ℹ️ {win.start}–{win.lateAfter} = <span style={{color:"var(--grn)"}}>On Time</span> · {win.lateAfter}–{win.end} = <span style={{color:"var(--ylw)"}}>Late</span></div>
+                    <button className="btn btn-p" onClick={saveWin} disabled={saving} style={{width:"fit-content"}}>{saving?<span className="spinner"/>:"Save Settings"}</button>
                   </div>
                 </div>
               </div>
@@ -566,39 +561,18 @@ const AdminDash = ({user}) => {
   );
 };
 
-// ─── ROOT ──────────────────────────────────────────────────────
 export default function App() {
   const [user,setUser]=useState(null);
   const [userData,setUserData]=useState(null);
   const [loading,setLoading]=useState(true);
-
   useEffect(()=>{
     return onAuthStateChanged(auth, async fbUser=>{
-     if(fbUser){
-  const d=await getDoc(doc(db,"employees",fbUser.uid));
-  if(d.exists()){ setUserData({uid:fbUser.uid,...d.data()}); setUser(fbUser); }
-} else { 
-  setUser(null); 
-  setUserData(null); 
-}
-setLoading(false);
+      if(fbUser){
+        try { const d=await getDoc(doc(db,"employees",fbUser.uid)); if(d.exists()){ setUserData({uid:fbUser.uid,...d.data()}); setUser(fbUser); } } catch(e){}
+      } else { setUser(null); setUserData(null); }
+      setLoading(false);
+    });
   },[]);
-  
-console.log("loading state:", loading, "user:", user);
-  if(loading) return (
-    <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}>
-      <div style={{textAlign:"center"}}>
-        <div className="spinner" style={{width:40,height:40,margin:"0 auto 16px",borderWidth:3}}/>
-        <div style={{color:"var(--txt3)",fontSize:14}}>Loading…</div>
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      <GS/>
-      <Toasts/>
-      {!user ? <Login/> : userData?.role==="admin" ? <AdminDash user={userData}/> : <EmpDash user={userData}/>}
-    </>
-  );
+  if(loading) return <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}><div style={{textAlign:"center"}}><div className="spinner" style={{width:40,height:40,margin:"0 auto 16px",borderWidth:3}}/><div style={{color:"var(--txt3)",fontSize:14}}>Loading…</div></div></div>;
+  return <><GS/><Toasts/>{!user?<Login/>:userData?.role==="admin"?<AdminDash user={userData}/>:<EmpDash user={userData}/>}</>;
 }
