@@ -9,15 +9,13 @@ import {
   collection, query, where, orderBy, serverTimestamp,
 } from "firebase/firestore";
 
-// ─── FIREBASE CONFIG ───────────────────────────────────────────
-// .env ফাইলে আপনার values বসান — এই ফাইল touch করবেন না
 const firebaseConfig = {
-  apiKey:            process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain:        process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId:         process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket:     process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             process.env.REACT_APP_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDKQnzG2J1wtWpENtFf2b9-XNnfte1niR0",
+  authDomain: "attendtrack-3a9dc.firebaseapp.com",
+  projectId: "attendtrack-3a9dc",
+  storageBucket: "attendtrack-3a9dc.firebasestorage.app",
+  messagingSenderId: "532454978373",
+  appId: "1:532454978373:web:4137905a0e0bdd94b4c42c",
 };
 
 const app  = initializeApp(firebaseConfig);
