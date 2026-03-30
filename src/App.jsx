@@ -142,9 +142,9 @@ function Camera({ onCapture, onCancel }) {
   const [captured, setCaptured] = useState(null);
   const [err, setErr] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
     start();
-    return () => stop(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stop = (s) => { (s || stream)?.getTracks().forEach(t => t.stop()); };
