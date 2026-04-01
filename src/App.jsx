@@ -266,8 +266,6 @@ function EmpDash({user}){
     finally{setMarking(false);}
   };
 
-  const presentN=hist.filter(r=>r.status==="present").length;
-  const lateN=hist.filter(r=>r.status==="late").length;
   const thisMonth=new Date().getMonth();
   const thisYear=new Date().getFullYear();
   const monthHist=hist.filter(r=>{const d=new Date(r.date+"T00:00:00");return d.getMonth()===thisMonth&&d.getFullYear()===thisYear;});
