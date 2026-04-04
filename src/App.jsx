@@ -14,7 +14,7 @@ const firebaseConfig = {
 
 const OFFICE_LAT = 23.2402;
 const OFFICE_LNG = 91.1239;
-const OFFICE_RADIUS_METERS = 200;
+const OFFICE_RADIUS_METERS = 100;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
