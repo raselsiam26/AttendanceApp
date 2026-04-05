@@ -156,16 +156,7 @@ function Camera({onCapture,onCancel}){
   const [captured,setCaptured]=useState(null);
   const [err,setErr]=useState(false);
   const [countdown,setCountdown]=useState(null);
-  useEffect(()=>{
-    let active=true;
-    navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
-     .then(s=>{if(!active){s.getTracks().forEach(t=>t.stop());return;}streamRef.current=s;if(vidRef.current){vidRef.current.srcObject=s;}setTimeout(()=>{if(active){startCountdown();}},500);}).catch(()=>setErr(true));
-      .catch(()=>setErr(true));
-    return()=>{active=false;streamRef.current?.getTracks().forEach(t=>t.stop());};
-      .catch(()=>setErr(true));
-    return()=>{active=false;streamRef.current?.getTracks().forEach(t=>t.stop());};
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+ 
   const snap=()=>{
     const v=vidRef.current,c=canRef.current;if(!v||!c)return;
     c.width=v.videoWidth;c.height=v.videoHeight;
@@ -173,14 +164,21 @@ function Camera({onCapture,onCancel}){
     setCaptured(c.toDataURL("image/jpeg",0.4));streamRef.current?.getTracks().forEach(t=>t.stop());
   };
   const startCountdown=()=>{
-    setCountdown(5);
-    let count=5;
+    setCountdown(3);
+    let count=3;
     const t=setInterval(()=>{
       count--;
       if(count===0){clearInterval(t);setCountdown(null);snap();}
       else setCountdown(count);
     },1000);
   };
+  useEffect(()=>{
+    let active=true;
+    navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
+      .then(s=>{if(!active){s.getTracks().forEach(t=>t.stop());return;}streamRef.current=s;if(vidRef.current){vidRef.current.srcObject=s;}setTimeout(()=>{if(active){startCountdown();}},500);})
+      .catch(()=>setErr(true));
+    return()=>{active=false;streamRef.current?.getTracks().forEach(t=>t.stop());};
+  },[]);
   if(err)return(<div style={{textAlign:"center",padding:20}}><div style={{fontSize:36,marginBottom:10}}>📷</div><p style={{color:"var(--red)",marginBottom:10,fontSize:13}}>Camera access পাওয়া যায়নি!</p><button className="btn btn-g" onClick={onCancel}>বাতিল</button></div>);
   return(
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
