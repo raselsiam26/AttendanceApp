@@ -74,7 +74,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.015
 #tw{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:7px}
 .toast{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:var(--radsm);font-size:13px;font-weight:500;color:white;animation:fadeIn .25s ease both;max-width:340px}
 .ts{background:#16a34a}.te{background:#dc2626}.ti{background:var(--acc)}
-.cam video{width:100%;display:block;border-radius:12px}
+.cam video{width:100%;display:block;transform:scaleX(-1);border-radius:12px}
 .cam canvas{display:none}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:999}
 .modal{background:var(--surf);border-radius:16px;padding:24px;width:90%;max-width:440px;max-height:90vh;overflow-y:auto}
@@ -155,41 +155,32 @@ function Camera({onCapture,onCancel}){
   const streamRef=useRef(null);
   const [captured,setCaptured]=useState(null);
   const [err,setErr]=useState(false);
-  const [countdown,setCountdown]=useState(null);
- 
-  const snap=()=>{
-    const v=vidRef.current,c=canRef.current;if(!v||!c)return;
-    c.width=v.videoWidth;c.height=v.videoHeight;
-    const ctx=c.getContext("2d");ctx.drawImage(v,0,0);
-    setCaptured(c.toDataURL("image/jpeg",0.4));streamRef.current?.getTracks().forEach(t=>t.stop());
-  };
-  const startCountdown=()=>{
-    setCountdown(3);
-    let count=3;
-    const t=setInterval(()=>{
-      count--;
-      if(count===0){clearInterval(t);setCountdown(null);snap();}
-      else setCountdown(count);
-    },1000);
-  };
   useEffect(()=>{
     let active=true;
     navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
-      .then(s=>{if(!active){s.getTracks().forEach(t=>t.stop());return;}streamRef.current=s;if(vidRef.current){vidRef.current.srcObject=s;}setTimeout(()=>{if(active){startCountdown();}},500);})
+      .then(s=>{if(!active){s.getTracks().forEach(t=>t.stop());return;}streamRef.current=s;if(vidRef.current)vidRef.current.srcObject=s;})
       .catch(()=>setErr(true));
     return()=>{active=false;streamRef.current?.getTracks().forEach(t=>t.stop());};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
+  const snap=()=>{
+    const v=vidRef.current,c=canRef.current;if(!v||!c)return;
+    c.width=v.videoWidth;c.height=v.videoHeight;
+    const ctx=c.getContext("2d");ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,0,0);
+    setCaptured(c.toDataURL("image/jpeg",0.4));streamRef.current?.getTracks().forEach(t=>t.stop());
+  };
   if(err)return(<div style={{textAlign:"center",padding:20}}><div style={{fontSize:36,marginBottom:10}}>📷</div><p style={{color:"var(--red)",marginBottom:10,fontSize:13}}>Camera access পাওয়া যায়নি!</p><button className="btn btn-g" onClick={onCancel}>বাতিল</button></div>);
   return(
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
       {!captured?(
         <>
-          <div className="cam" style={{width:"100%",maxWidth:320,border:"2px solid var(--acc)",borderRadius:14,overflow:"hidden",position:"relative"}}><video ref={vidRef} autoPlay playsInline muted/><canvas ref={canRef} style={{display:"none"}}/>{countdown&&<div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:80,fontWeight:700,color:"white",textShadow:"0 0 20px rgba(0,0,0,.8)",background:"rgba(0,0,0,.3)",width:120,height:120,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>{countdown}</div>}</div>          <p style={{color:"var(--txt2)",fontSize:12}}>Camera তে মুখ রাখুন তারপর Selfie তুলুন</p>
-          <div style={{display:"flex",gap:8}}><button className="btn btn-g" onClick={onCancel}>বাতিল</button><button className="btn btn-p" onClick={startCountdown} style={{padding:"10px 28px",display:"none"}}>📸 Selfie তুলুন</button>
+          <div className="cam" style={{width:"100%",maxWidth:320,border:"2px solid var(--acc)",borderRadius:14,overflow:"hidden"}}><video ref={vidRef} autoPlay playsInline muted/><canvas ref={canRef} style={{display:"none"}}/></div>
+          <p style={{color:"var(--txt2)",fontSize:12}}>Camera তে মুখ রাখুন তারপর Selfie তুলুন</p>
+          <div style={{display:"flex",gap:8}}><button className="btn btn-g" onClick={onCancel}>বাতিল</button><button className="btn btn-p" onClick={snap} style={{padding:"10px 28px"}}>📸 Selfie তুলুন</button></div>
         </>
       ):(
         <>
-         <img src={captured} alt="selfie" style={{width:"100%",maxWidth:320,borderRadius:14,border:"2px solid var(--grn)"}}/>
+          <img src={captured} alt="selfie" style={{width:"100%",maxWidth:320,borderRadius:14,border:"2px solid var(--grn)",transform:"scaleX(-1)"}}/>
           <p style={{color:"var(--grn)",fontSize:12}}>✓ Selfie তোলা হয়েছে!</p>
           <div style={{display:"flex",gap:8}}><button className="btn btn-g" onClick={()=>setCaptured(null)}>🔄 আবার তুলুন</button><button className="btn btn-p" onClick={()=>onCapture(captured)} style={{padding:"10px 28px"}}>✓ Confirm</button></div>
         </>
