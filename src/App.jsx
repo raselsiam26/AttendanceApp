@@ -159,7 +159,9 @@ function Camera({onCapture,onCancel}){
   useEffect(()=>{
     let active=true;
     navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}})
-      .then(s=>{if(!active){s.getTracks().forEach(t=>t.stop());return;}streamRef.current=s;if(vidRef.current)vidRef.current.srcObject=s;})
+      .then(s=>{if(!active){s.getTracks().forEach(t=>t.stop());return;}streamRef.current=s;if(vidRef.current)vidRef.current.srcObject=s;setTimeout(()=>{if(active)startCountdown();},500);})
+      .catch(()=>setErr(true));
+    return()=>{active=false;streamRef.current?.getTracks().forEach(t=>t.stop());};
       .catch(()=>setErr(true));
     return()=>{active=false;streamRef.current?.getTracks().forEach(t=>t.stop());};
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,7 +187,7 @@ function Camera({onCapture,onCancel}){
       {!captured?(
         <>
           <div className="cam" style={{width:"100%",maxWidth:320,border:"2px solid var(--acc)",borderRadius:14,overflow:"hidden",position:"relative"}}><video ref={vidRef} autoPlay playsInline muted/><canvas ref={canRef} style={{display:"none"}}/>{countdown&&<div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:80,fontWeight:700,color:"white",textShadow:"0 0 20px rgba(0,0,0,.8)",background:"rgba(0,0,0,.3)",width:120,height:120,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>{countdown}</div>}</div>          <p style={{color:"var(--txt2)",fontSize:12}}>Camera তে মুখ রাখুন তারপর Selfie তুলুন</p>
-          <div style={{display:"flex",gap:8}}><button className="btn btn-g" onClick={onCancel}>বাতিল</button><button className="btn btn-p" onClick={startCountdown} style={{padding:"10px 28px"}}>📸 Selfie তুলুন</button></div>
+          <div style={{display:"flex",gap:8}}><button className="btn btn-g" onClick={onCancel}>বাতিল</button><button className="btn btn-p" onClick={startCountdown} style={{padding:"10px 28px",display:"none"}}>📸 Selfie তুলুন</button>
         </>
       ):(
         <>
