@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+ import { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, getDocs, deleteDoc, collection, query, where, orderBy, serverTimestamp, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, getDocs, deleteDoc, collection, query, where, orderBy, serverTimestamp, updateDoc, addDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDKQnzG2J1wtWpENtFf2b9-XNnfte1niR0",
@@ -198,6 +198,7 @@ function EmpDash({user}){
   const [showCam,setShowCam]=useState(false);
   const [locStatus,setLocStatus]=useState(null);
   const [distance,setDistance]=useState(null);
+  const [onLeave,setOnLeave]=useState(false);
 
   useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
 
@@ -220,7 +221,17 @@ function EmpDash({user}){
     }catch{toast.e("Data load হয়নি");}
   },[user.uid]);
 
-  useEffect(()=>{load();},[load]);
+  useEffect(()=>{load();loadLeave();},[load]);
+
+  const loadLeave=useCallback(async()=>{
+    try{
+      const today=todayStr();
+      const q=query(collection(db,"leaves"),where("uid","==",user.uid));
+      const snap=await getDocs(q);
+      const isOnLeave=snap.docs.some(d=>{const l=d.data();return l.startDate<=today&&l.endDate>=today;});
+      setOnLeave(isOnLeave);
+    }catch{}
+  },[user.uid]);
 
   const ws=win?getWS(win,now):null;
   const wsC={early:"bb",on_time:"bg",late:"by",closed:"br"};
@@ -305,7 +316,13 @@ function EmpDash({user}){
           )}
 
           <div className="card" style={{padding:"32px 20px"}}>
-            {showCam?(
+            {onLeave?(
+              <div style={{textAlign:"center"}}>
+                <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(34,197,94,.14)",border:"2px solid var(--grn)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",fontSize:32}}>🏖</div>
+                <h2 style={{fontSize:18,fontWeight:700,marginBottom:6,color:"var(--grn)"}}>🏖️ আপনি এখন ছুটিতে আছেন</h2>
+                <p style={{color:"var(--txt2)",fontSize:12}}>আজ attendance mark করার দরকার নেই</p>
+              </div>
+            ):showCam?(
               <Camera onCapture={handleCapture} onCancel={()=>setShowCam(false)}/>
             ):rec?(
               <div style={{textAlign:"center"}}>
@@ -386,6 +403,9 @@ function AdminDash({user}){
   const [customWinModal,setCustomWinModal]=useState(null);
   const [customWinData,setCustomWinData]=useState({start:"09:00",lateAfter:"09:15",end:"09:30",enabled:false});
   const [savingCustom,setSavingCustom]=useState(false);
+  const [leaves,setLeaves]=useState([]);
+  const [newLeave,setNewLeave]=useState({uid:"",employeeName:"",startDate:"",endDate:"",reason:""});
+  const [savingLeave,setSavingLeave]=useState(false);
 
   useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
 
@@ -402,6 +422,9 @@ function AdminDash({user}){
       setAttendance(aSnap.docs.map(d=>d.data()));
       setAllAttendance(allSnap.docs.map(d=>d.data()));
       if(wDoc.exists())setWin(wDoc.data());
+      // Load leaves
+      const lSnap=await getDocs(collection(db,"leaves"));
+      setLeaves(lSnap.docs.map(d=>({id:d.id,...d.data()})));
     }catch{toast.e("Data load হয়নি");}
     finally{setLoading(false);}
   },[filterDate]);
@@ -492,6 +515,39 @@ function AdminDash({user}){
     toast.s("Monthly CSV exported!");
   };
 
+  const addLeave=async e=>{
+    e.preventDefault();
+    if(!newLeave.uid)return toast.i("Employee select করুন");
+    if(!newLeave.startDate||!newLeave.endDate)return toast.i("Start এবং End date দিন");
+    if(newLeave.startDate>newLeave.endDate)return toast.e("Start date, End date এর পরে হতে পারে না");
+    setSavingLeave(true);
+    try{
+      const emp=employees.find(x=>x.id===newLeave.uid);
+      await addDoc(collection(db,"leaves"),{
+        uid:newLeave.uid,
+        employeeName:emp?.name||newLeave.employeeName,
+        startDate:newLeave.startDate,
+        endDate:newLeave.endDate,
+        reason:newLeave.reason,
+        createdAt:serverTimestamp(),
+      });
+      toast.s("Leave যোগ হয়েছে!");
+      setNewLeave({uid:"",employeeName:"",startDate:"",endDate:"",reason:""});
+      const lSnap=await getDocs(collection(db,"leaves"));
+      setLeaves(lSnap.docs.map(d=>({id:d.id,...d.data()})));
+    }catch{toast.e("Save হয়নি!");}
+    finally{setSavingLeave(false);}
+  };
+
+  const deleteLeave=async(id)=>{
+    if(!window.confirm("এই leave টি delete করবেন?"))return;
+    try{
+      await deleteDoc(doc(db,"leaves",id));
+      toast.s("Leave delete হয়েছে!");
+      setLeaves(p=>p.filter(l=>l.id!==id));
+    }catch{toast.e("Delete হয়নি!");}
+  };
+
   const pN=attendance.filter(r=>r.status==="present").length;
   const lN=attendance.filter(r=>r.status==="late").length;
   const aN=Math.max(0,employees.length-attendance.length);
@@ -516,6 +572,7 @@ function AdminDash({user}){
     {id:"late",l:"🕐 Late Count"},
     {id:"employees",l:"👥 Employees"},
     {id:"settings",l:"⚙️ Settings"},
+    {id:"leave",l:"🏖️ Leave"},
   ];
 
   const Thumb=({r,emp})=>r?.selfie
@@ -872,6 +929,59 @@ function AdminDash({user}){
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* LEAVE */}
+            {tab==="leave"&&(
+              <div style={{display:"grid",gap:16}}>
+                <h2 style={{fontSize:18,fontWeight:700}}>🏖️ Leave Management</h2>
+                <div className="card">
+                  <h3 style={{fontWeight:600,marginBottom:12,fontSize:14}}>নতুন Leave যোগ করুন</h3>
+                  <form onSubmit={addLeave} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8,alignItems:"end"}}>
+                    <div>
+                      <label className="lbl">Employee</label>
+                      <select className="inp" value={newLeave.uid} onChange={e=>{const emp=employees.find(x=>x.id===e.target.value);setNewLeave(p=>({...p,uid:e.target.value,employeeName:emp?.name||""}));}} required>
+                        <option value="">— Select —</option>
+                        {employees.map(emp=><option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                      </select>
+                    </div>
+                    <div><label className="lbl">Start Date</label><input className="inp" type="date" value={newLeave.startDate} onChange={e=>setNewLeave(p=>({...p,startDate:e.target.value}))} required/></div>
+                    <div><label className="lbl">End Date</label><input className="inp" type="date" value={newLeave.endDate} onChange={e=>setNewLeave(p=>({...p,endDate:e.target.value}))} required/></div>
+                    <button className="btn btn-p" type="submit" disabled={savingLeave} style={{height:40}}>{savingLeave?<span className="spin"/>:"+ Add Leave"}</button>
+                  </form>
+                  <div style={{marginTop:10}}>
+                    <label className="lbl">Reason (optional)</label>
+                    <input className="inp" value={newLeave.reason} onChange={e=>setNewLeave(p=>({...p,reason:e.target.value}))} placeholder="ছুটির কারণ লিখুন..."/>
+                  </div>
+                </div>
+
+                {leaves.length>0?(
+                  <div className="card" style={{padding:0,overflow:"hidden"}}>
+                    <div style={{padding:"12px 16px",borderBottom:"1px solid var(--brd)",fontWeight:600,fontSize:13}}>সব Leave ({leaves.length})</div>
+                    <div style={{maxHeight:400,overflowY:"auto"}}>
+                      <table>
+                        <thead><tr><th>Employee</th><th>Start Date</th><th>End Date</th><th>Reason</th><th>Action</th></tr></thead>
+                        <tbody>
+                          {leaves.map(l=>(
+                            <tr key={l.id}>
+                              <td style={{fontWeight:600,color:"var(--txt)"}}>{l.employeeName}</td>
+                              <td style={{fontFamily:"var(--mono)",fontSize:12}}>{fmtDate(l.startDate)}</td>
+                              <td style={{fontFamily:"var(--mono)",fontSize:12}}>{fmtDate(l.endDate)}</td>
+                              <td style={{fontSize:12,fontStyle:"italic"}}>{l.reason||"—"}</td>
+                              <td><button className="btn btn-sm" onClick={()=>deleteLeave(l.id)} style={{background:"rgba(239,68,68,.12)",color:"var(--red)",border:"1px solid rgba(239,68,68,.25)"}}>🗑 Delete</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ):(
+                  <div className="card" style={{textAlign:"center",padding:40}}>
+                    <div style={{fontSize:36,marginBottom:10}}>🏖</div>
+                    <div style={{color:"var(--txt3)",fontSize:13}}>কোনো leave নেই</div>
+                  </div>
+                )}
               </div>
             )}
 
