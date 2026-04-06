@@ -221,8 +221,7 @@ function EmpDash({user}){
     }catch{toast.e("Data load হয়নি");}
   },[user.uid]);
 
-  useEffect(()=>{load();loadLeave();},[load,loadLeave]);
-
+ 
   const loadLeave=useCallback(async()=>{
     try{
       const today=todayStr();
@@ -232,6 +231,7 @@ function EmpDash({user}){
       setOnLeave(isOnLeave);
     }catch{}
   },[user.uid]);
+ useEffect(()=>{load();loadLeave();},[load,loadLeave]);
 
   const ws=win?getWS(win,now):null;
   const wsC={early:"bb",on_time:"bg",late:"by",closed:"br"};
